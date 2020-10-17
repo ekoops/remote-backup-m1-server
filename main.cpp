@@ -2,49 +2,42 @@
 #include <map>
 #include <boost/filesystem.hpp>
 #include <boost/asio.hpp>
-#include <boost/asio/ssl/impl/src.hpp>
+#include <boost/regex.hpp>
+#include <iomanip>
 #include "ServerSocket.h"
 #include "SocketBlockingQueue.h"
 #include "Logger.h"
+#include "RegexUtility.h"
+#include "Configuration.h"
 
 #define THREAD_NUM 8
+
+bool authenticate() {
+
+}
 
 void f(SocketBlockingQueue & sbq) {
     while (1) {
         Socket socket = sbq.pop();
-        socket.read();
+        //authentication
+        if (authenticate()) {
+            //socket.read();
+        }
     }
 }
 
-std::pair<std::string, std::string> line_to_pair(std::string const& line) {
-    std::istringstream iss {line};
-    std::string key;
-    std::getline(iss, key, ':');
-    std::string value;
-    std::getline(iss, value);
-    return {key, value};
-}
 
-void get_conf(boost::filesystem::path const& config_file) {
-    if (!boost::filesystem::exists(config_file)) {
-        throw std::runtime_error {"Configuration not found"};
-    }
-    std::map<std::string, std::string> map;
 
-    std::ifstream ifs {config_file};
-    std::string line;
-    while (std::getline(ifs, line)) {
-        std::pair<std::string, std::string> pair = line_to_pair(line);
-    }
-    ifs.close();
-}
-
-//
 int main(int argc, char const* const argv[]) {
+    boost::regex e {"([a-z]{1,}):([a-z\\d]{1,})"};
+
     boost::filesystem::path config_file {argc < 2 ? "./config.cfg" : argv[1]};
+    Configuration configuration {config_file};
+//    configuration.get("ciao");
 
     SocketBlockingQueue sbq {};
-    Logger logger {};
+    Logger logger {configuration.get("LOGGER_FILE_PATH")};
+
     std::vector<std::thread> threads;
     threads.reserve(THREAD_NUM);
     for (int i=0; i<THREAD_NUM; i++) {

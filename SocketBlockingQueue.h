@@ -16,7 +16,7 @@ class SocketBlockingQueue {
 public:
     void push(Socket&& socket) {
         std::unique_lock ul {m};
-        this->socket_queue.push(socket);
+        this->socket_queue.push(std::move(socket));
         cv.notify_all();
     }
 
