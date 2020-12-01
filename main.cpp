@@ -1,58 +1,40 @@
+//
+// Created by leonardo on 01/12/20.
+//
+
 #include <iostream>
-#include <map>
+#include <string>
+#include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/asio.hpp>
-#include <boost/regex.hpp>
-#include <iomanip>
-#include "ServerSocket.h"
-#include "SocketBlockingQueue.h"
-#include "Logger.h"
-#include "RegexUtility.h"
-#include "Configuration.h"
+#include "server.h"
 
-#define THREAD_NUM 8
+namespace fs = boost::filesystem;
 
-bool authenticate() {
+int main(int argc, char *argv[]) {
 
-}
-
-void f(SocketBlockingQueue & sbq) {
-    while (1) {
-        Socket socket = sbq.pop();
-        //authentication
-        if (authenticate()) {
-            //socket.read();
+    if (argc != 5) {
+        std::cerr << "Usage: ./server <address> <port> <threads> <backup_root>" << std::endl;
+        return 1;
+    }
+    try {
+        std::string server_addr{argv[1]};
+        std::string port{argv[2]};
+        std::uint16_t num_threads = boost::lexical_cast<std::uint16_t>(argv[3]);
+        boost::filesystem::path backup_root{boost::filesystem::canonical(argv[4])};
+        if (!fs::is_directory(backup_root)) {
+            std::cerr << "<backup_root> provided is not a directory" << std::endl;
+            return 2;
         }
+
+        // Initialise the server.
+        server s{server_addr, port, num_threads, backup_root};
+
+        // Run the server until stopped.
+        s.run();
     }
-}
-
-
-
-int main(int argc, char const* const argv[]) {
-    boost::regex e {"([a-z]{1,}):([a-z\\d]{1,})"};
-
-    boost::filesystem::path config_file {argc < 2 ? "./config.cfg" : argv[1]};
-    Configuration configuration {config_file};
-//    configuration.get("ciao");
-
-    SocketBlockingQueue sbq {};
-    Logger logger {configuration.get("LOGGER_FILE_PATH")};
-
-    std::vector<std::thread> threads;
-    threads.reserve(THREAD_NUM);
-    for (int i=0; i<THREAD_NUM; i++) {
-        threads.emplace_back(f, std::ref(sbq));
+    catch (std::exception &e) {
+        std::cerr << "exception: " << e.what() << "\n";
     }
-
-    ServerSocket ss{5000};
-    while (1) {
-        struct sockaddr_in client_sockaddr_in;
-        unsigned int client_sockaddr_in_len;
-        Socket client_socket = ss.accept(&client_sockaddr_in, &client_sockaddr_in_len);
-        logger.log("Accepted socket", &client_sockaddr_in);
-        sbq.push(std::move(client_socket));
-    }
-
 
     return 0;
 }

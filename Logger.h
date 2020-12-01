@@ -14,21 +14,35 @@ class Logger {
     std::ofstream ofs;
     Logger(Logger const&) = delete;
     Logger& operator=(Logger const&) = delete;
-public:
-    Logger(boost::filesystem::path const& path): ofs {std::ofstream {path}} {}
-    void log(std::string const& message, struct sockaddr_in* sockaddr_in) {
+
+    static std::string get_time() {
         using namespace boost::posix_time;
         ptime today {second_clock::universal_time()};
         std::string today_string {to_iso_extended_string(today)};
         std::istringstream iss {today_string};
         std::string today_substring;
         std::getline(iss, today_substring, ',');
+        return today_substring;
+    }
+
+public:
+    Logger(boost::filesystem::path const& path): ofs {std::ofstream {path}} {}
+    void log(std::string const& message, struct sockaddr_in* sockaddr_in) {
+        std::string today = Logger::get_time();
 
         std::ostringstream log;
         char ip[16];
         int port = ntohs(sockaddr_in->sin_port);
         inet_ntop(AF_INET, &sockaddr_in->sin_addr, ip, sizeof(ip));
-        log << '[' << today_substring << "][" << ip << ':' << port << "][M:" << message << '\n';
+        log << '[' << today << "][" << ip << ':' << port << "][M:" << message << '\n';
+        ofs << log.str();
+
+    }
+    void err(std::string const& message) {
+        std::string today = Logger::get_time();
+        std::ostringstream log;
+        log << '[' << today << "][M:" << message << '\n';
+
         ofs << log.str();
     }
 

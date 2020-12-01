@@ -1,17 +1,16 @@
 cmake_minimum_required(VERSION 3.17)
-project(remote_backup_m1_server)
+project(remote-backup-m1-server)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS -pthread)
 #[[set(Boost_USE_STATIC_LIBS ON)]]
 #[[set(OPENSSL_USE_STATIC_LIBS TRUE)]]
 
 set(BOOST_ROOT boost)
-find_package(Boost 1.73.0 REQUIRED COMPONENTS filesystem date_time regex)
+set(CMAKE_CXX_FLAGS -pthread)
+find_package(Boost 1.73.0 REQUIRED COMPONENTS filesystem thread serialization regex)
 find_package(OpenSSL REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIR})
-add_executable(remote_backup_m1_server main.cpp SocketBlockingQueue.cpp SocketBlockingQueue.h Logger.cpp Logger.h Configuration.cpp Configuration.h RegexUtility.cpp RegexUtility.h)
+add_executable(remote-backup-m1-server main.cpp server.cpp server.h connection.cpp connection.h request_handler.cpp request_handler.h tools.cpp tools.h message.h message.cpp tlv_view.h tlv_view.cpp dir.h dir.cpp resource.h resource.cpp user.cpp user.h)
 
-target_link_libraries(remote_backup_m1_server ${Boost_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto)
-
+target_link_libraries(remote-backup-m1-server ${Boost_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto)

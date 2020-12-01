@@ -8,6 +8,7 @@
 #include <map>
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
+#include "RegexUtility.h"
 
 class Configuration {
     std::map<std::string, std::string> config;
@@ -16,12 +17,11 @@ public:
         if (!boost::filesystem::exists(config_path)) {
             throw std::runtime_error{"Configuration not found"};
         }
-
         std::ifstream ifs{config_path};
         std::string line;
         boost::regex regex{"([a-z]{1,}):([a-z\\d]{1,})"};
         while (std::getline(ifs, line)) {
-            auto pair = match_and_parse(regex, line);
+            auto pair = RegexUtility::match_and_parse(regex, line);
             bool success = pair.first;
             std::vector<std::string> results = pair.second;
             if (!success || results.size() != 2) {
