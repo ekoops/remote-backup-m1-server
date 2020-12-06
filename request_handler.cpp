@@ -214,9 +214,9 @@ void request_handler::handle_update(communication::tlv_view &msg_view,
     }
 }
 
-void request_handler::handle_delete(communication::tlv_view &msg_view,
-                                    communication::message &reply,
-                                    user& user) {
+void request_handler::handle_erase(communication::tlv_view &msg_view,
+                                   communication::message &reply,
+                                   user& user) {
     if (msg_view.get_tlv_type() != communication::TLV_TYPE::ITEM)
         return close_response(reply, communication::TLV_TYPE::ERROR);
     std::string c_sign{msg_view.cbegin(), msg_view.cend()};
@@ -274,8 +274,8 @@ void request_handler::handle_request(const communication::message &request,
                 return handle_create(msg_view, reply, user);
             } else if (c_msg_type == communication::MESSAGE_TYPE::UPDATE) {
                 return handle_update(msg_view, reply, user);
-            } else if (c_msg_type == communication::MESSAGE_TYPE::DELETE) {
-                return handle_delete(msg_view, reply, user);
+            } else if (c_msg_type == communication::MESSAGE_TYPE::ERASE) {
+                return handle_erase(msg_view, reply, user);
             } else return close_response(reply, communication::TLV_TYPE::ERROR);
         }
     }

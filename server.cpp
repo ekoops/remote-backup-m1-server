@@ -42,8 +42,8 @@ server::server(std::string const &address,
             | boost::asio::ssl::context::no_sslv2             // disable support for sslv2
             | boost::asio::ssl::context::single_dh_use);       // Always create a new key when using tmp_dh parameters
     this->ctx_.set_password_callback(boost::bind(&server::get_password, this));
-    this->ctx_.use_certificate_chain_file("../certs/cert.pem");  // loading server pem certificate
-    this->ctx_.use_private_key_file("../certs/key.pem", boost::asio::ssl::context::pem);
+    this->ctx_.use_certificate_chain_file("../certs/server-cert.pem");  // loading server pem certificate
+    this->ctx_.use_private_key_file("../certs/server-key.pem", boost::asio::ssl::context::pem);
     this->ctx_.use_tmp_dh_file("../certs/dh2048.pem");
 
     start_accept();

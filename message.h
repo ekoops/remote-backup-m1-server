@@ -16,7 +16,7 @@
 
 namespace communication {
     enum MESSAGE_TYPE {
-        NONE, CREATE, UPDATE, DELETE, SYNC, AUTH
+        NONE, CREATE, UPDATE, ERASE, SYNC, AUTH
     };
 
     enum TLV_TYPE {

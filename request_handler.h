@@ -37,9 +37,9 @@ class request_handler : private boost::noncopyable {
                        communication::message &reply,
                        user &user);
 
-    void handle_delete(communication::tlv_view &msg_view,
-                       communication::message &reply,
-                       user &user);
+    void handle_erase(communication::tlv_view &msg_view,
+                      communication::message &reply,
+                      user &user);
 
 public:
     explicit request_handler(boost::filesystem::path backup_root_);  /// Handle a request and produce a reply.
