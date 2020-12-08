@@ -15,6 +15,7 @@
 #include "user.h"
 #include <condition_variable>
 #include <unordered_set>
+#include "message_vector.h"
 
 
 class request_handler : private boost::noncopyable {
@@ -26,25 +27,46 @@ class request_handler : private boost::noncopyable {
                      communication::message &reply,
                      user &user);
 
+    void handle_auth(communication::tlv_view &msg_view,
+                     std::shared_ptr<communication::message_vector> &reply_vector,
+                     user &user);
+
     void handle_sync(communication::message &reply,
+                     user &user);
+
+    void handle_sync(std::shared_ptr<communication::message_vector> &reply_vector,
                      user &user);
 
     void handle_create(communication::tlv_view &msg_view,
                        communication::message &reply,
                        user &user);
 
+    void handle_create(communication::tlv_view &msg_view,
+                       std::shared_ptr<communication::message_vector> &reply_vector,
+                       user &user);
+
     void handle_update(communication::tlv_view &msg_view,
                        communication::message &reply,
+                       user &user);
+    void handle_update(communication::tlv_view &msg_view,
+                       std::shared_ptr<communication::message_vector> &reply_vector,
                        user &user);
 
     void handle_erase(communication::tlv_view &msg_view,
                       communication::message &reply,
                       user &user);
+    void handle_erase(communication::tlv_view &msg_view,
+                       std::shared_ptr<communication::message_vector> &reply_vector,
+                       user &user);
 
 public:
     explicit request_handler(boost::filesystem::path backup_root_);  /// Handle a request and produce a reply.
     void handle_request(const communication::message &request,
                         communication::message &reply,
+                        user &usr);
+
+    void handle_request(const communication::message &request,
+                        std::shared_ptr<communication::message_vector> &reply,
                         user &usr);
 };
 
