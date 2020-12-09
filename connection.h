@@ -17,7 +17,7 @@
 #include "message.h"
 #include "request_handler.h"
 #include "user.h"
-#include "message_vector.h"
+#include "message_queue.h"
 
 typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket;
 
@@ -34,9 +34,9 @@ class connection : public boost::enable_shared_from_this<connection>, private bo
     std::shared_ptr<std::vector<uint8_t>> request_buffer_;
     communication::message request_;
 
-    size_t reply_header_;
-    communication::message reply_;
-    std::shared_ptr<communication::message_vector> reply_vector_;
+    size_t creply_header_;
+    communication::message creply_;
+    std::shared_ptr<communication::message_queue> replies_;
     user user_;
 
     void shutdown();

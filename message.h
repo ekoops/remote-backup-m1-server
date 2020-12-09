@@ -16,7 +16,7 @@
 
 namespace communication {
     enum MESSAGE_TYPE {
-        NONE, CREATE, UPDATE, ERASE, SYNC, AUTH
+        NONE, CREATE, UPDATE, ERASE, SYNC, AUTH, KEEP_ALIVE
     };
 
     enum TLV_TYPE {
@@ -33,7 +33,6 @@ namespace communication {
         explicit message(std::shared_ptr<std::vector<uint8_t>> raw_msg_ptr);
 
         void add_TLV(TLV_TYPE tlv_type, size_t length = 0, char const *buffer = nullptr);
-        void add_TLV(std::shared_ptr<std::vector<uint8_t>> const& tlv_vector);
 
         [[nodiscard]] std::shared_ptr<std::vector<uint8_t>> raw_msg_ptr() const;
 

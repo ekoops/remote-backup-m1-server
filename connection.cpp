@@ -6,7 +6,7 @@
 #include <vector>
 #include <boost/bind/bind.hpp>
 #include "message.h"
-#include "message_vector.h"
+#include "message_queue.h"
 
 #define BUFFER_SIZE 4096
 
@@ -18,7 +18,7 @@ connection::connection(boost::asio::io_context &io,
           socket_{strand_, ctx},
           req_handler_{std::move(req_handler)},
           request_buffer_{std::make_shared<std::vector<uint8_t>>(BUFFER_SIZE)},
-          reply_vector_{} {
+          replies_{} {
     // TODO sistemare il 4096
 }
 
@@ -37,7 +37,7 @@ void connection::shutdown() {
 //    if (!e) {
 //        boost::asio::async_write(
 //                this->socket_,
-//                this->reply_.buffer(),
+//                this->creply_.buffer(),
 //                boost::bind(&connection::read_header,
 //                            shared_from_this(),
 //                            boost::asio::placeholders::error)
@@ -46,33 +46,32 @@ void connection::shutdown() {
 //}
 void connection::write_response(boost::system::error_code const &e) {
     if (!e) {
-        this->reply_ = this->reply_vector_->front();
-        this->reply_vector_->pop();
-        std::cout << this->reply_ << std::endl;
+        this->creply_ = this->replies_->front();
+        this->replies_->pop();
+        std::cout << this->creply_ << std::endl;
         boost::asio::async_write(
                 this->socket_,
-                this->reply_.buffer(),
+                this->creply_.buffer(),
                 boost::bind(
-                        this->reply_vector_->empty() ? &connection::read_header : &connection::write_header,
-                            shared_from_this(),
-                            boost::asio::placeholders::error)
+                        this->replies_->empty() ? &connection::read_header : &connection::write_header,
+                        shared_from_this(),
+                        boost::asio::placeholders::error)
         );
     } else this->shutdown();
 }
 
 void connection::write_header(boost::system::error_code const &e) {
     if (!e) {
-        this->reply_header_ = this->reply_vector_->front().size();
-        std::cout << "HEADER: " << this->reply_header_ << std::endl;
+        this->creply_header_ = this->replies_->front().size();
+        std::cout << "HEADER: " << this->creply_header_ << std::endl;
         boost::asio::async_write(
                 this->socket_,
-                boost::asio::buffer(&this->reply_header_, sizeof(this->reply_header_)),
+                boost::asio::buffer(&this->creply_header_, sizeof(this->creply_header_)),
                 boost::bind(&connection::write_response,
                             shared_from_this(),
                             boost::asio::placeholders::error));
     } else this->shutdown();
 }
-
 
 
 void connection::handle_buffer(boost::system::error_code const &e) {
@@ -88,20 +87,19 @@ void connection::handle_buffer(boost::system::error_code const &e) {
             std::cout << "<<<<<<<<<<<<REQUEST>>>>>>>>>>>>" << std::endl;
             std::cout << this->request_;
 
-            this->req_handler_->handle_request(this->request_,
-                                               this->reply_vector_,
-                                               this->user_);
-            this->reply_vector_->finalize();
-            std::vector<boost::asio::mutable_buffer> buffs;
-            std::vector<size_t> headers;
-            //            buffs.reserve(this->msgs_.size());
+            this->req_handler_->handle_request(
+                    this->request_,
+                    this->replies_,
+                    this->user_
+            );
+
             std::cout << "<<<<<<<<<<<<RESPONSE>>>>>>>>>>>>" << std::endl;
 
-            this->reply_header_ = this->reply_vector_->front().size();
-            std::cout << "HEADER: " << this->reply_header_ << std::endl;
+            this->creply_header_ = this->replies_->front().size();
+            std::cout << "HEADER: " << this->creply_header_ << std::endl;
             boost::asio::async_write(
                     this->socket_,
-                    boost::asio::buffer(&this->reply_header_, sizeof(this->reply_header_)),
+                    boost::asio::buffer(&this->creply_header_, sizeof(this->creply_header_)),
                     boost::bind(&connection::write_response,
                                 shared_from_this(),
                                 boost::asio::placeholders::error));
