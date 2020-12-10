@@ -1,7 +1,3 @@
-//
-// Created by leonardo on 01/12/20.
-//
-
 #include <iostream>
 #include <string>
 #include <boost/program_options.hpp>
@@ -69,7 +65,7 @@ po::variables_map parse_options(int argc, char const *const argv[]) {
 }
 
 int main(int argc, char *argv[]) {
-// Parsing program options
+    // Parsing program options
     po::variables_map vm = parse_options(argc, argv);
 
     try {
@@ -86,7 +82,8 @@ int main(int argc, char *argv[]) {
         s.run();
     }
     catch (std::exception &e) {
-        std::cerr << "exception: " << e.what() << "\n";
+        std::cerr << "exception: " << e.what() << std::endl;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;

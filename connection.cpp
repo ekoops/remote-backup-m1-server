@@ -6,9 +6,6 @@
 #include <vector>
 #include <boost/bind/bind.hpp>
 #include "message.h"
-#include "message_queue.h"
-
-#define BUFFER_SIZE 4096
 
 
 connection::connection(boost::asio::io_context &io,
@@ -17,12 +14,11 @@ connection::connection(boost::asio::io_context &io,
         : strand_(boost::asio::make_strand(io)),
           socket_{strand_, ctx},
           req_handler_{std::move(req_handler)},
-          request_buffer_{std::make_shared<std::vector<uint8_t>>(BUFFER_SIZE)},
-          replies_{} {
-    // TODO sistemare il 4096
+          request_buffer_{std::make_shared<std::vector<uint8_t>>(communication::message_queue::CHUNK_SIZE)}, {
+
 }
 
-ssl_socket::lowest_layer_type &connection::socket() {
+ssl_socket::lowest_layer_type &connection::raw_socket() {
     return this->socket_.lowest_layer();
 }
 
@@ -33,119 +29,85 @@ void connection::shutdown() {
     this->socket_.lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 }
 
-//void connection::write_response(boost::system::error_code const &e) {
-//    if (!e) {
-//        boost::asio::async_write(
-//                this->socket_,
-//                this->creply_.buffer(),
-//                boost::bind(&connection::read_header,
-//                            shared_from_this(),
-//                            boost::asio::placeholders::error)
-//        );
-//    } else this->shutdown();
-//}
 void connection::write_response(boost::system::error_code const &e) {
-    if (!e) {
-        this->creply_ = this->replies_->front();
-        this->replies_->pop();
-        std::cout << this->creply_ << std::endl;
-        boost::asio::async_write(
-                this->socket_,
-                this->creply_.buffer(),
-                boost::bind(
-                        this->replies_->empty() ? &connection::read_header : &connection::write_header,
-                        shared_from_this(),
-                        boost::asio::placeholders::error)
+    if (e) return this->shutdown();
+    this->current_reply_header_ = this->replies_->front().size();
+    std::cout << "<<<<<<<<<<<<RESPONSE>>>>>>>>>>>>" << std::endl;
+    std::cout << "HEADER: " << this->current_reply_header_ << std::endl;
+    boost::asio::async_write(
+            this->socket_,
+            boost::asio::buffer(&this->current_reply_header_, sizeof(this->current_reply_header_)),
+            [self = shared_from_this()](boost::system::error_code const &e, size_t /**/) {
+                if (e) return self->shutdown();
+                self->current_reply_ = self->replies_->front();
+                self->replies_->pop();
+                std::cout << self->current_reply_ << std::endl;
+                boost::asio::async_write(
+                        self->socket_,
+                        self->current_reply_.buffer(),
+                        boost::bind(
+                                self->replies_->empty()
+                                ? &connection::read_request
+                                : &connection::write_response,
+                                self->shared_from_this(),
+                                boost::asio::placeholders::error)
+                );
+            }
+    );
+}
+
+
+void connection::handle_request(boost::system::error_code const &e) {
+    if (e) return this->shutdown();
+    try {
+        std::cout << "HANDLE_RESPONSE" << std::endl;
+        this->request_ = communication::message{
+                std::make_shared<std::vector<uint8_t>>(
+                        this->request_buffer_->begin(),
+                        std::next(this->request_buffer_->begin(), this->request_header_)
+                )
+        };
+        std::cout << "<<<<<<<<<<<<REQUEST>>>>>>>>>>>>" << std::endl;
+        std::cout << this->request_;
+
+        this->req_handler_->handle_request(
+                this->request_,
+                this->replies_,
+                this->user_
         );
-    } else this->shutdown();
-}
 
-void connection::write_header(boost::system::error_code const &e) {
-    if (!e) {
-        this->creply_header_ = this->replies_->front().size();
-        std::cout << "HEADER: " << this->creply_header_ << std::endl;
-        boost::asio::async_write(
-                this->socket_,
-                boost::asio::buffer(&this->creply_header_, sizeof(this->creply_header_)),
-                boost::bind(&connection::write_response,
-                            shared_from_this(),
-                            boost::asio::placeholders::error));
-    } else this->shutdown();
-}
+        this->write_response(boost::system::error_code{});
 
-
-void connection::handle_buffer(boost::system::error_code const &e) {
-    if (!e) {
-        try {
-            std::cout << "HANDLE_RESPONSE" << std::endl;
-            this->request_ = communication::message{
-                    std::make_shared<std::vector<uint8_t>>(
-                            this->request_buffer_->begin(),
-                            std::next(this->request_buffer_->begin(), this->request_header_)
-                    )
-            };
-            std::cout << "<<<<<<<<<<<<REQUEST>>>>>>>>>>>>" << std::endl;
-            std::cout << this->request_;
-
-            this->req_handler_->handle_request(
-                    this->request_,
-                    this->replies_,
-                    this->user_
-            );
-
-            std::cout << "<<<<<<<<<<<<RESPONSE>>>>>>>>>>>>" << std::endl;
-
-            this->creply_header_ = this->replies_->front().size();
-            std::cout << "HEADER: " << this->creply_header_ << std::endl;
-            boost::asio::async_write(
-                    this->socket_,
-                    boost::asio::buffer(&this->creply_header_, sizeof(this->creply_header_)),
-                    boost::bind(&connection::write_response,
-                                shared_from_this(),
-                                boost::asio::placeholders::error));
-
-
-        } catch (std::exception const &e) {
-            std::cout << e.what() << std::endl;
-            this->shutdown();
-        }
-    } else {
-        std::cout << e << std::endl;
+    } catch (std::exception const &e) {
+        std::cout << e.what() << std::endl;
         this->shutdown();
     }
 }
 
-void connection::read_buffer(boost::system::error_code const &e) {
-    if (!e) {
-        boost::asio::async_read(
-                this->socket_,
-                boost::asio::buffer(*this->request_buffer_, this->request_header_),
-                boost::bind(
-                        &connection::handle_buffer,
-                        shared_from_this(),
-                        boost::asio::placeholders::error
-                )
-        );
-    } else this->shutdown();
-}
-
-void connection::read_header(boost::system::error_code const &e) {
-    if (!e) {
-        boost::asio::async_read(
-                this->socket_,
-                boost::asio::buffer(&this->request_header_, sizeof(this->request_header_)),
-                boost::bind(
-                        &connection::read_buffer,
-                        shared_from_this(),
-                        boost::asio::placeholders::error
-                )
-        );
-    } else this->shutdown();
+void connection::read_request(boost::system::error_code const &e) {
+    if (e) return this->shutdown();
+    boost::asio::async_read(
+            this->socket_,
+            boost::asio::buffer(&this->request_header_, sizeof(this->request_header_)),
+            [self = shared_from_this()](boost::system::error_code const &e, size_t /**/) {
+                if (e) return self->shutdown();
+                boost::asio::async_read(
+                        self->socket_,
+                        boost::asio::buffer(*self->request_buffer_, self->request_header_),
+                        boost::bind(
+                                &connection::handle_request,
+                                self->shared_from_this(),
+                                boost::asio::placeholders::error
+                        )
+                );
+            }
+    );
 }
 
 void connection::start() {
+    this->socket_.lowest_layer().set_option(boost::asio::socket_base::keep_alive(true));
     this->socket_.async_handshake(boost::asio::ssl::stream_base::server,
-                                  boost::bind(&connection::read_header,
+                                  boost::bind(&connection::read_request,
                                               shared_from_this(),
                                               boost::asio::placeholders::error));
 }

@@ -138,14 +138,13 @@ void request_handler::handle_create(communication::tlv_view &msg_view,
             }
             catch (fs::filesystem_error &ex) {
                 std::cout << "Failed to access to file:\n\t" << absolute_path << std::endl;
-                // TODO
+
                 std::exit(-1);
             }
         }
         return close_response(replies, communication::TLV_TYPE::OK);
     }
     catch (fs::filesystem_error &ex) {
-        //TODO
         std::cerr << "Filesystem error from " << ex.what() << std::endl;
         return close_response(replies, communication::TLV_TYPE::ERROR);
     }
@@ -206,14 +205,12 @@ void request_handler::handle_update(communication::tlv_view &msg_view,
             std::string digest = tools::hash(absolute_path, c_relative_path);
             if (digest != c_digest) {
                 remove(absolute_path);
-                // TODO eliminare il file dal server
                 return close_response(replies, communication::TLV_TYPE::ERROR);
             }
         }
         return close_response(replies, communication::TLV_TYPE::OK);
     }
     catch (fs::filesystem_error &ex) {
-        //TODO
         return close_response(replies, communication::TLV_TYPE::ERROR);
     }
 }
@@ -249,7 +246,6 @@ void request_handler::handle_erase(communication::tlv_view &msg_view,
         );
     }
     catch (fs::filesystem_error &ex) {
-        //TODO
         return close_response(replies, communication::TLV_TYPE::ERROR);
     }
 }

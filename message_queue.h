@@ -13,8 +13,8 @@ namespace communication {
     class message_queue {
         std::queue<communication::message> msgs_queue_;
         MESSAGE_TYPE msg_type_;
-        static size_t const CHUNK_SIZE;
     public:
+        static size_t const CHUNK_SIZE;
         explicit message_queue(MESSAGE_TYPE msg_type);
 
         void add_TLV(TLV_TYPE tlv_type, size_t length = 0, char const *buffer = nullptr);

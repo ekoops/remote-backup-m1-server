@@ -72,7 +72,7 @@ void server::start_accept() {
             this->ctx_,
             this->req_handler_ptr)
     );
-    acceptor_.async_accept(new_connection_ptr->socket(),
+    acceptor_.async_accept(new_connection_ptr->raw_socket(),
                            boost::bind(&server::handle_accept, this,
                                        boost::asio::placeholders::error));
 

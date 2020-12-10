@@ -26,6 +26,7 @@ class connection : public boost::enable_shared_from_this<connection>, private bo
 
     /// Strand to ensure the connection's handlers are not called concurrently.
     boost::asio::strand<boost::asio::io_context::executor_type> strand_;
+
     /// Socket for the connection.
     ssl_socket socket_;
     std::shared_ptr<request_handler> req_handler_;
@@ -34,21 +35,18 @@ class connection : public boost::enable_shared_from_this<connection>, private bo
     std::shared_ptr<std::vector<uint8_t>> request_buffer_;
     communication::message request_;
 
-    size_t creply_header_;
-    communication::message creply_;
+    size_t current_reply_header_;
+    communication::message current_reply_;
     std::shared_ptr<communication::message_queue> replies_;
     user user_;
 
     void shutdown();
 
     void write_response(boost::system::error_code const &e);
-    void write_header(boost::system::error_code const &e);
 
-    void handle_buffer(boost::system::error_code const &e);
+    void handle_request(boost::system::error_code const &e);
 
-    void read_buffer(boost::system::error_code const &e);
-
-    void read_header(boost::system::error_code const &e);
+    void read_request(boost::system::error_code const &e);
 
 
 public:
@@ -58,7 +56,7 @@ public:
                         boost::asio::ssl::context &ctx,
                         std::shared_ptr<request_handler> req_handler);
 
-    ssl_socket::lowest_layer_type &socket();
+    ssl_socket::lowest_layer_type &raw_socket();
 
     void start();
 };
