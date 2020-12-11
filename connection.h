@@ -18,6 +18,7 @@
 #include "request_handler.h"
 #include "user.h"
 #include "message_queue.h"
+#include "logger.h"
 
 typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket;
 
@@ -40,6 +41,8 @@ class connection : public boost::enable_shared_from_this<connection>, private bo
     std::shared_ptr<communication::message_queue> replies_;
     user user_;
 
+    std::shared_ptr<logger> logger_ptr_;
+
     void shutdown();
 
     void write_response(boost::system::error_code const &e);
@@ -54,9 +57,10 @@ public:
     /// Construct a connection with the given io.
     explicit connection(boost::asio::io_context &io,
                         boost::asio::ssl::context &ctx,
+                        std::shared_ptr<logger> logger_ptr,
                         std::shared_ptr<request_handler> req_handler);
 
-    ssl_socket::lowest_layer_type &raw_socket();
+    ssl_socket &socket();
 
     void start();
 };

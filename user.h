@@ -9,10 +9,17 @@
 #include "dir.h"
 
 class user {
+    std::string username_;
     bool is_auth_;
     bool is_synced_;
     std::shared_ptr<directory::dir> dir_ptr_;
 public:
+    [[nodiscard]] std::string const& username() const {
+        return this->username_;
+    }
+    void username(std::string const& username) {
+        this->username_ = username;
+    }
     [[nodiscard]] bool auth() const {
         return this->is_auth_;
     }

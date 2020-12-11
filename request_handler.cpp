@@ -5,11 +5,18 @@
 #include "tools.h"
 #include "resource.h"
 #include <boost/filesystem.hpp>
+#include <utility>
 #include "message_queue.h"
 
 namespace fs = boost::filesystem;
 
-request_handler::request_handler(fs::path backup_root_) : backup_root_{std::move(backup_root_)} {}
+request_handler::request_handler(
+        fs::path backup_root,
+        fs::path credentials_path,
+        std::shared_ptr<logger> logger_ptr
+) : backup_root_{std::move(backup_root)},
+    credentials_path_{std::move(credentials_path)},
+    logger_ptr_{std::move(logger_ptr)} {}
 
 void close_response(std::shared_ptr<communication::message_queue> &replies, communication::TLV_TYPE tlv_type) {
     replies->add_TLV(tlv_type);
@@ -31,9 +38,10 @@ void request_handler::handle_auth(communication::tlv_view &msg_view,
 
     password = std::string{msg_view.cbegin(), msg_view.cend()};
 
-    if (tools::verify_password(username, password)) {
-
+    if (tools::verify_password(this->credentials_path_, username, password)) {
         std::string dir_name = tools::hash(username);
+        std::cout << dir_name << std::endl;
+        user.username(username);
         user.dir(this->backup_root_.generic_path() / dir_name);
         user.auth(true);
         return close_response(replies, communication::TLV_TYPE::OK);
@@ -216,8 +224,8 @@ void request_handler::handle_update(communication::tlv_view &msg_view,
 }
 
 void request_handler::handle_erase(communication::tlv_view &msg_view,
-                  std::shared_ptr<communication::message_queue> &replies,
-                  user &user) {
+                                   std::shared_ptr<communication::message_queue> &replies,
+                                   user &user) {
     if (msg_view.tlv_type() != communication::TLV_TYPE::ITEM)
         return close_response(replies, communication::TLV_TYPE::ERROR);
     std::string c_sign{msg_view.cbegin(), msg_view.cend()};

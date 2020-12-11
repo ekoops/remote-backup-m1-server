@@ -1,29 +1,29 @@
-//
-// Created by leonardo on 01/12/20.
-//
-
 #include "connection.h"
 #include <vector>
 #include <boost/bind/bind.hpp>
+
 #include "message.h"
 
 
-connection::connection(boost::asio::io_context &io,
+connection::connection(
+        boost::asio::io_context &io,
                        boost::asio::ssl::context &ctx,
+                       std::shared_ptr<logger> logger_ptr,
                        std::shared_ptr<request_handler> req_handler)
         : strand_(boost::asio::make_strand(io)),
           socket_{strand_, ctx},
+          logger_ptr_ {std::move(logger_ptr)},
           req_handler_{std::move(req_handler)},
-          request_buffer_{std::make_shared<std::vector<uint8_t>>(communication::message_queue::CHUNK_SIZE)}, {
+          request_buffer_{std::make_shared<std::vector<uint8_t>>(communication::message_queue::CHUNK_SIZE)} {
 
 }
 
-ssl_socket::lowest_layer_type &connection::raw_socket() {
-    return this->socket_.lowest_layer();
+ssl_socket &connection::socket() {
+    return this->socket_;
 }
 
 void connection::shutdown() {
-    std::cout << "SHUTDOWN" << std::endl;
+    // TODO log
     boost::system::error_code ignored_ec;
     this->socket_.shutdown(ignored_ec);
     this->socket_.lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);

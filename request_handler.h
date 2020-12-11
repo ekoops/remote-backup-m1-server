@@ -16,10 +16,13 @@
 #include <condition_variable>
 #include <unordered_set>
 #include "message_queue.h"
+#include "logger.h"
 
 
 class request_handler : private boost::noncopyable {
     boost::filesystem::path backup_root_;
+    boost::filesystem::path credentials_path_;
+    std::shared_ptr<logger> logger_ptr_;
     std::unordered_map<std::string, std::shared_ptr<boost::filesystem::ofstream>> ofs_stream_;
     std::mutex m_;
 
@@ -40,11 +43,16 @@ class request_handler : private boost::noncopyable {
                        user &user);
 
     void handle_erase(communication::tlv_view &msg_view,
-                       std::shared_ptr<communication::message_queue> &replies,
-                       user &user);
+                      std::shared_ptr<communication::message_queue> &replies,
+                      user &user);
 
 public:
-    explicit request_handler(boost::filesystem::path backup_root_);  // Handle a request and produce a reply.
+    // Handle a request and produce a reply.
+    explicit request_handler(
+            boost::filesystem::path backup_root,
+            boost::filesystem::path credentials_path,
+            std::shared_ptr<logger> logger_ptr
+    );
 
     void handle_request(const communication::message &request,
                         std::shared_ptr<communication::message_queue> &replies,

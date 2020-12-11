@@ -10,16 +10,17 @@
 #include <iostream>
 
 using boost::uuids::detail::md5;
+namespace fs = boost::filesystem;
 
 
-std::string tools::create_sign(boost::filesystem::path const &path,
+std::string tools::create_sign(fs::path const &path,
                                std::string const &digest) {
     std::ostringstream oss;
     oss << path.generic_path().string() << '\x00' << digest;
     return oss.str();
 }
 
-std::pair<boost::filesystem::path, std::string> tools::split_sign(std::string const& sign) {
+std::pair<fs::path, std::string> tools::split_sign(std::string const& sign) {
     std::istringstream oss{sign};
     std::string temp;
     boost::regex regex {"(.*)\\x00(.*)"};
@@ -51,8 +52,8 @@ std::string tools::hash(std::string const& s) {
 }
 
 
-std::string tools::hash(boost::filesystem::path const &absolute_path, boost::filesystem::path const& relative_path) {
-    boost::filesystem::ifstream ifs;
+std::string tools::hash(fs::path const &absolute_path, fs::path const& relative_path) {
+    fs::ifstream ifs;
     ifs.open(absolute_path, std::ios_base::binary);
     ifs.unsetf(std::ios::skipws);           // Stop eating new lines in binary mode!!!
     std::streampos length;
@@ -86,16 +87,24 @@ std::string tools::hash_to_string(md5::digest_type const& digest) {
     return result;
 }
 
-bool tools::verify_password(std::string const& username, std::string const& password) {
+bool tools::verify_password(
+        fs::path const& credentials_path,
+        std::string const& username,
+        std::string const& password) {
     char hash[SHA512_DIGEST_LENGTH];
     SHA512(reinterpret_cast<const unsigned char *>(password.c_str()),
            password.size() - 1,
            reinterpret_cast<unsigned char *>(hash));
     std::string hash_str;
     boost::algorithm::hex(hash, hash + SHA512_DIGEST_LENGTH, std::back_inserter(hash_str));
+    std::cout << hash_str << std::endl;
 
 //     TODO generalizzare il path
-    boost::filesystem::ifstream ifs {"USER.txt"};
+    fs::ifstream ifs {credentials_path};
+    if (!ifs) {
+        std::cerr << "Failed to access to credentials" << std::endl;
+        return false;
+    }
     std::string line;
     while(getline(ifs, line)) {
         if (line.find(username) != std::string::npos) {

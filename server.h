@@ -12,7 +12,9 @@
 #include <boost/asio/ssl.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/program_options.hpp>
 #include "connection.h"
+#include "logger.h"
 
 class server : private boost::noncopyable {
     std::size_t thread_pool_size_;
@@ -22,14 +24,12 @@ class server : private boost::noncopyable {
     boost::asio::signal_set signals_;
     /// Acceptor used to listen for incoming connections.
     boost::asio::ip::tcp::acceptor acceptor_;
-    boost::shared_ptr<connection> new_connection_ptr;
-    std::shared_ptr<request_handler> req_handler_ptr;
-public:
-    explicit server(std::string const &address,
-                    std::string const& port,
-                    std::uint16_t thread_pool_size,
-                    boost::filesystem::path const &backup_root);
+    boost::shared_ptr<connection> new_connection_ptr_;
+    std::shared_ptr<request_handler> req_handler_ptr_;
+    std::shared_ptr<logger> logger_ptr_;
 
+public:
+    explicit server(boost::program_options::variables_map const& vm);
     void run();
 
 private:

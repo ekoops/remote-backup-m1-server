@@ -26,7 +26,11 @@ struct tools {
 
     static std::string hash(boost::filesystem::path const &absolute_path, boost::filesystem::path const &relative_path);
 
-    static bool verify_password(std::string const& username, std::string const& password);
+    static bool verify_password(
+            boost::filesystem::path const &credentials_path,
+            std::string const &username,
+            std::string const &password
+    );
 
 private:
     static std::string hash_to_string(boost::uuids::detail::md5::digest_type const &digest);
