@@ -79,7 +79,6 @@ void server::start_accept() {
 }
 
 void server::handle_accept(const boost::system::error_code &e) {
-    this->logger_ptr_->log(this->new_connection_ptr_->socket(),"","Accepted connection");
     if (!e) {
         this->new_connection_ptr_->start();
     }

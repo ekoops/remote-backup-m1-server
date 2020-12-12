@@ -4,14 +4,13 @@ namespace fs = boost::filesystem;
 
 logger::logger(fs::path const &path) : ofs_{fs::ofstream{path}} {}
 
-// [08:00:00][88.88.88.88][M:blka lvm kdlsfma sld]
 void logger::log(
-        boost::asio::ssl::stream<boost::asio::ip::tcp::socket> const& ssl_socket,
-        std::string const &username,
+        user const& usr,
         std::string const &message
 ) {
     std::string today = logger::get_time();
-    std::string ip = ssl_socket.lowest_layer().remote_endpoint().address().to_string();
+    std::string const& username = usr.username();
+    std::string const& ip = usr.ip();
 
     std::ostringstream log;
     log << '[' << today << "]["

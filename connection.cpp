@@ -15,7 +15,8 @@ connection::connection(
           logger_ptr_ {std::move(logger_ptr)},
           req_handler_{std::move(req_handler)},
           request_buffer_{std::make_shared<std::vector<uint8_t>>(communication::message_queue::CHUNK_SIZE)} {
-
+        sum = 0;
+        count = 0;
 }
 
 ssl_socket &connection::socket() {
@@ -23,7 +24,7 @@ ssl_socket &connection::socket() {
 }
 
 void connection::shutdown() {
-    // TODO log
+    this->logger_ptr_->log(this->user_, "Shutdown");
     boost::system::error_code ignored_ec;
     this->socket_.shutdown(ignored_ec);
     this->socket_.lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
@@ -60,7 +61,7 @@ void connection::write_response(boost::system::error_code const &e) {
 void connection::handle_request(boost::system::error_code const &e) {
     if (e) return this->shutdown();
     try {
-        std::cout << "HANDLE_RESPONSE" << std::endl;
+//        std::cout << "HANDLE_RESPONSE" << std::endl;
         this->request_ = communication::message{
                 std::make_shared<std::vector<uint8_t>>(
                         this->request_buffer_->begin(),
@@ -75,7 +76,6 @@ void connection::handle_request(boost::system::error_code const &e) {
                 this->replies_,
                 this->user_
         );
-
         this->write_response(boost::system::error_code{});
 
     } catch (std::exception const &e) {
@@ -105,6 +105,8 @@ void connection::read_request(boost::system::error_code const &e) {
 }
 
 void connection::start() {
+    this->user_.ip(this->socket_.lowest_layer().remote_endpoint().address().to_string());
+    this->logger_ptr_->log(this->user_, "Accepted connection");
     this->socket_.lowest_layer().set_option(boost::asio::socket_base::keep_alive(true));
     this->socket_.async_handshake(boost::asio::ssl::stream_base::server,
                                   boost::bind(&connection::read_request,
