@@ -20,10 +20,10 @@ std::string tools::create_sign(fs::path const &path,
     return oss.str();
 }
 
-std::pair<fs::path, std::string> tools::split_sign(std::string const& sign) {
+std::pair<fs::path, std::string> tools::split_sign(std::string const &sign) {
     std::istringstream oss{sign};
     std::string temp;
-    boost::regex regex {"(.*)\\x00(.*)"};
+    boost::regex regex{"(.*)\\x00(.*)"};
     auto pair = tools::match_and_parse(regex, sign);
     if (pair.first) return {pair.second[0], pair.second[1]};
     else throw std::runtime_error{"errore"};
@@ -43,7 +43,7 @@ std::pair<bool, std::vector<std::string>> tools::match_and_parse(boost::regex co
     } else return {false, results};
 }
 
-std::string tools::hash(std::string const& s) {
+std::string tools::MD5_hash(std::string const &s) {
     md5 hash;
     md5::digest_type digest;
     hash.process_bytes(s.data(), s.size());
@@ -52,7 +52,7 @@ std::string tools::hash(std::string const& s) {
 }
 
 
-std::string tools::hash(fs::path const &absolute_path, fs::path const& relative_path) {
+std::string tools::MD5_hash(fs::path const &absolute_path, fs::path const &relative_path) {
     fs::ifstream ifs;
     ifs.open(absolute_path, std::ios_base::binary);
     ifs.unsetf(std::ios::skipws);           // Stop eating new lines in binary mode!!!
@@ -69,7 +69,7 @@ std::string tools::hash(fs::path const &absolute_path, fs::path const& relative_
                        std::istream_iterator<char>(ifs),
                        std::istream_iterator<char>());
 
-    std::string relative_path_str {relative_path.generic_path().string()};
+    std::string relative_path_str{relative_path.generic_path().string()};
     hash.process_bytes(relative_path_str.c_str(), relative_path_str.size());
     hash.process_bytes(&*file_buffer.cbegin(), length);
     hash.get_digest(digest);
@@ -94,32 +94,13 @@ std::string tools::MD5_to_string(boost::uuids::detail::md5::digest_type const &d
     return result;
 }
 
-bool tools::verify_password(
-        fs::path const& credentials_path,
-        std::string const& username,
-        std::string const& password) {
-    char hash[SHA512_DIGEST_LENGTH];
-    SHA512(reinterpret_cast<const unsigned char *>(password.c_str()),
-           password.size() - 1,
-           reinterpret_cast<unsigned char *>(hash));
-    std::string hash_str;
-    boost::algorithm::hex(hash, hash + SHA512_DIGEST_LENGTH, std::back_inserter(hash_str));
-    std::cout << hash_str << std::endl;
-
-//     TODO generalizzare il path
-    fs::ifstream ifs {credentials_path};
-    if (!ifs) {
-        std::cerr << "Failed to access to credentials" << std::endl;
-        return false;
-    }
-    std::string line;
-    while(getline(ifs, line)) {
-        if (line.find(username) != std::string::npos) {
-            if (line.find('\t') != std::string::npos) {
-                std::string hashed_pswd = line.substr(line.find('\t')+1);
-                return hashed_pswd == hash_str;
-            } else return false;
-        }
-    }
-    return false;
+std::string tools::SHA512_hash(std::string const &str) {
+    char digest[SHA512_DIGEST_LENGTH];
+    SHA512(reinterpret_cast<const unsigned char *>(str.c_str()),
+           str.size() - 1,
+           reinterpret_cast<unsigned char *>(digest));
+    std::string digest_str;
+    boost::algorithm::hex(digest, digest + SHA512_DIGEST_LENGTH, std::back_inserter(digest_str));
+    std::cout << digest_str << std::endl;
+    return digest_str;
 }

@@ -7,14 +7,14 @@
 
 connection::connection(
         boost::asio::io_context &io,
-                       boost::asio::ssl::context &ctx,
-                       std::shared_ptr<logger> logger_ptr,
-                       std::shared_ptr<request_handler> req_handler)
+        boost::asio::ssl::context &ctx,
+        std::shared_ptr<logger> logger_ptr,
+        std::shared_ptr<request_handler> req_handler)
         : strand_(boost::asio::make_strand(io)),
           socket_{strand_, ctx},
-          logger_ptr_ {std::move(logger_ptr)},
-          req_handler_{std::move(req_handler)},
-          request_buffer_{std::make_shared<std::vector<uint8_t>>(communication::message_queue::CHUNK_SIZE)} {
+          logger_ptr_{std::move(logger_ptr)},
+          req_handler_ptr_{std::move(req_handler)},
+          buffer_(communication::message_queue::CHUNK_SIZE) {
 }
 
 ssl_socket &connection::socket() {
@@ -28,70 +28,103 @@ void connection::shutdown() {
     this->socket_.lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 }
 
+void connection::log_read() {
+    this->logger_ptr_->log(this->user_,
+                           communication::MESSAGE_TYPE::NONE,
+                           RESULT_TYPE::NONE,
+                           RESULT_TYPE::ERROR);
+}
+
+void connection::log_write(boost::system::error_code const &e) {
+    auto message_result = !this->replies_.verify_error() ? RESULT_TYPE::OK : RESULT_TYPE::ERROR;
+    auto connection_result = !e ? RESULT_TYPE::OK : RESULT_TYPE::ERROR;
+    this->logger_ptr_->log(this->user_, this->replies_.msg_type(), message_result, connection_result);
+}
+
+void connection::handle_completion(boost::system::error_code const &e) {
+    this->log_write(e);
+    if (e) this->shutdown();
+    else this->read_request(e);
+}
+
 void connection::write_response(boost::system::error_code const &e) {
-    if (e) return this->shutdown();
-    this->current_reply_header_ = this->replies_->front().size();
+    if (e) {
+        this->log_write(e);
+        return this->shutdown();
+    }
+    this->header_ = this->replies_.front().size();
     std::cout << "<<<<<<<<<<<<RESPONSE>>>>>>>>>>>>" << std::endl;
-    std::cout << "HEADER: " << this->current_reply_header_ << std::endl;
+    std::cout << "HEADER: " << this->header_ << std::endl;
     boost::asio::async_write(
             this->socket_,
-            boost::asio::buffer(&this->current_reply_header_, sizeof(this->current_reply_header_)),
+            boost::asio::buffer(&this->header_, sizeof(this->header_)),
             [self = shared_from_this()](boost::system::error_code const &e, size_t /**/) {
-                if (e) return self->shutdown();
-                self->current_reply_ = self->replies_->front();
-                self->replies_->pop();
-                std::cout << self->current_reply_ << std::endl;
+                if (e) {
+                    self->log_write(e);
+                    return self->shutdown();
+                }
+                self->msg_ = self->replies_.front();
+                self->replies_.pop();
+                std::cout << self->msg_ << std::endl;
                 boost::asio::async_write(
                         self->socket_,
-                        self->current_reply_.buffer(),
+                        self->msg_.buffer(),
                         boost::bind(
-                                self->replies_->empty()
-                                ? &connection::read_request
+                                self->replies_.empty()
+                                ? &connection::handle_completion
                                 : &connection::write_response,
                                 self->shared_from_this(),
-                                boost::asio::placeholders::error)
+                                boost::asio::placeholders::error
+                        )
                 );
             }
     );
 }
 
-
 void connection::handle_request(boost::system::error_code const &e) {
-    if (e) return this->shutdown();
+    if (e) {
+        this->log_read();
+        return this->shutdown();
+    }
     try {
-//        std::cout << "HANDLE_RESPONSE" << std::endl;
-        this->request_ = communication::message{
+        this->msg_ = communication::message{
                 std::make_shared<std::vector<uint8_t>>(
-                        this->request_buffer_->begin(),
-                        std::next(this->request_buffer_->begin(), this->request_header_)
+                        this->buffer_.begin(),
+                        std::next(this->buffer_.begin(), this->header_)
                 )
         };
-        std::cout << "<<<<<<<<<<<<REQUEST>>>>>>>>>>>>" << std::endl;
-        std::cout << this->request_;
-
-        this->req_handler_->handle_request(
-                this->request_,
-                this->replies_,
-                this->user_
-        );
-        this->write_response(boost::system::error_code{});
-
     } catch (std::exception const &e) {
         std::cout << e.what() << std::endl;
-        this->shutdown();
+        return this->shutdown();
     }
+
+    std::cout << "<<<<<<<<<<<<REQUEST>>>>>>>>>>>>" << std::endl;
+    std::cout << this->msg_;
+
+    this->req_handler_ptr_->handle_request(
+            this->msg_,
+            this->replies_,
+            this->user_
+    );
+    this->write_response(boost::system::error_code{});
 }
 
 void connection::read_request(boost::system::error_code const &e) {
-    if (e) return this->shutdown();
+    if (e) {
+        this->log_read();
+        return this->shutdown();
+    }
     boost::asio::async_read(
             this->socket_,
-            boost::asio::buffer(&this->request_header_, sizeof(this->request_header_)),
+            boost::asio::buffer(&this->header_, sizeof(this->header_)),
             [self = shared_from_this()](boost::system::error_code const &e, size_t /**/) {
-                if (e) return self->shutdown();
+                if (e) {
+                    self->log_read();
+                    return self->shutdown();
+                }
                 boost::asio::async_read(
                         self->socket_,
-                        boost::asio::buffer(*self->request_buffer_, self->request_header_),
+                        boost::asio::buffer(self->buffer_, self->header_),
                         boost::bind(
                                 &connection::handle_request,
                                 self->shared_from_this(),

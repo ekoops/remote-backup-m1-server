@@ -17,41 +17,53 @@ class user {
     std::shared_ptr<directory::dir> dir_ptr_;
 public:
     [[nodiscard]] std::string const &id() const { return this->id_; }
-    void id(std::string const& id) { this->id_ = id; }
+
+    user &id(std::string const &id) {
+        this->id_ = id;
+        return *this;
+    }
 
     [[nodiscard]] std::string const &ip() const { return this->ip_; }
-    void ip(std::string const& ip) { this->ip_ = ip; }
+
+    user &ip(std::string const &ip) {
+        this->ip_ = ip;
+        return *this;
+    }
 
     [[nodiscard]] std::string const &username() const {
         return this->username_;
     }
 
-    void username(std::string const &username) {
+    user &username(std::string const &username) {
         this->username_ = username;
+        return *this;
     }
 
     [[nodiscard]] bool auth() const {
         return this->is_auth_;
     }
 
-    void auth(bool is_auth) {
+    user &auth(bool is_auth) {
         this->is_auth_ = is_auth;
+        return *this;
     }
 
     [[nodiscard]] bool synced() const {
         return this->is_synced_;
     }
 
-    void synced(bool is_synced) {
+    user &synced(bool is_synced) {
         this->is_synced_ = is_synced;
+        return *this;
     }
 
     std::shared_ptr<directory::dir> dir() {
         return this->dir_ptr_;
     }
 
-    void dir(boost::filesystem::path const &absolute_path) {
-        this->dir_ptr_ = directory::dir::get_instance(absolute_path, true);
+    user &dir(boost::filesystem::path const &absolute_path) {
+        this->dir_ptr_ = directory::dir::get_instance(absolute_path);
+        return *this;
     }
 };
 

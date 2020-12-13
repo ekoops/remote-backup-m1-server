@@ -31,6 +31,12 @@ bool dir::contains(boost::filesystem::path const& path) const {
     return this->content_.find(path) != this->content_.end();
 }
 
+void dir::clear() {
+    std::unique_lock ul{this->m_, std::defer_lock};
+    if (synced_) ul.lock();
+    this->content_.clear();
+}
+
 boost::filesystem::path dir::path() const {
     return this->path_;
 }

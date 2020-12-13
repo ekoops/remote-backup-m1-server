@@ -46,6 +46,8 @@ namespace directory {
 
         bool contains(boost::filesystem::path const& path) const;
 
+        void clear();
+
         [[nodiscard]] boost::filesystem::path path() const;
 
         [[nodiscard]] std::optional<resource> rsrc(boost::filesystem::path const &path) const;

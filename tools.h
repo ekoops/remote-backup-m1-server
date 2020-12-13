@@ -22,15 +22,11 @@ struct tools {
     static std::pair<bool, std::vector<std::string>>
     match_and_parse(boost::regex const &regex, std::string const &line);
 
-    static std::string hash(std::string const &s);
+    static std::string MD5_hash(std::string const &s);
 
-    static std::string hash(boost::filesystem::path const &absolute_path, boost::filesystem::path const &relative_path);
+    static std::string MD5_hash(boost::filesystem::path const &absolute_path, boost::filesystem::path const &relative_path);
 
-    static bool verify_password(
-            boost::filesystem::path const &credentials_path,
-            std::string const &username,
-            std::string const &password
-    );
+    static std::string SHA512_hash(std::string const &str);
 
 private:
     static std::string MD5_to_string(boost::uuids::detail::md5::digest_type const &digest);

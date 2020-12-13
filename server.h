@@ -33,7 +33,6 @@ public:
     void run();
 
 private:
-    std::string get_password() const;
     void start_accept();
     void handle_accept(const boost::system::error_code &e);
     void handle_stop();

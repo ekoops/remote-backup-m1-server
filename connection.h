@@ -30,20 +30,25 @@ class connection : public boost::enable_shared_from_this<connection>, private bo
 
     /// Socket for the connection.
     ssl_socket socket_;
-    std::shared_ptr<request_handler> req_handler_;
 
-    size_t request_header_;
-    std::shared_ptr<std::vector<uint8_t>> request_buffer_;
-    communication::message request_;
-
-    size_t current_reply_header_;
-    communication::message current_reply_;
-    std::shared_ptr<communication::message_queue> replies_;
-    user user_;
-
+    std::shared_ptr<request_handler> req_handler_ptr_;
     std::shared_ptr<logger> logger_ptr_;
 
+    size_t header_;
+    std::vector<uint8_t> buffer_;
+    communication::message msg_;
+    communication::message_queue replies_;
+
+    user user_;
+
+
     void shutdown();
+
+    void log_read();
+
+    void log_write(boost::system::error_code const &e);
+
+    void handle_completion(boost::system::error_code const &e);
 
     void write_response(boost::system::error_code const &e);
 
@@ -54,7 +59,6 @@ class connection : public boost::enable_shared_from_this<connection>, private bo
 
 public:
 
-    /// Construct a connection with the given io.
     explicit connection(boost::asio::io_context &io,
                         boost::asio::ssl::context &ctx,
                         std::shared_ptr<logger> logger_ptr,

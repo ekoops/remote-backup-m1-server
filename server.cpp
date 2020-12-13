@@ -5,23 +5,18 @@
 
 namespace fs = boost::filesystem;
 
-server::server(boost::program_options::variables_map const& vm)
+server::server(boost::program_options::variables_map const &vm)
         : thread_pool_size_{vm["threads"].as<std::size_t>()},
           signals_{io_},
           acceptor_{io_},
           ctx_{boost::asio::ssl::context::sslv23}, // set generic ssl/tls version
           new_connection_ptr_{},
-          logger_ptr_{std::make_shared<logger>(
-                  vm["logger-file"].as<fs::path>()
-          )},
+          logger_ptr_{std::make_shared<logger>(vm["logger-file"].as<fs::path>())},
           req_handler_ptr_{std::make_shared<request_handler>(
                   vm["backup-root"].as<fs::path>(),
-                  vm["credentials-file"].as<fs::path>(),
-                  logger_ptr_
+                  vm["credentials-file"].as<fs::path>()
           )} {
     // Register to handle the signals that indicate when the server should exit.
-    // It is safe to register for the same signal multiple times in a program,
-    // provided all registration for the specified signal is made through Asio.
     this->signals_.add(SIGINT);
     this->signals_.add(SIGTERM);
 #if defined(SIGQUIT)
@@ -72,17 +67,17 @@ void server::start_accept() {
             this->logger_ptr_,
             this->req_handler_ptr_)
     );
-    this->acceptor_.async_accept(this->new_connection_ptr_->socket().lowest_layer(),
-                           boost::bind(&server::handle_accept, this,
-                                       boost::asio::placeholders::error));
+    this->acceptor_.async_accept(
+            this->new_connection_ptr_->socket().lowest_layer(),
+            boost::bind(
+                    &server::handle_accept, this, boost::asio::placeholders::error
+            )
+    );
 
 }
 
 void server::handle_accept(const boost::system::error_code &e) {
-    if (!e) {
-        this->new_connection_ptr_->start();
-    }
-
+    if (!e) this->new_connection_ptr_->start();
     start_accept();
 }
 

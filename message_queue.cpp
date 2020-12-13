@@ -22,8 +22,8 @@ void message_queue::add_TLV(TLV_TYPE tlv_type, size_t length, const char *buffer
         message msg{this->msg_type_};
         msg.add_TLV(tlv_type, length, buffer);
         this->msgs_queue_.push(msg);
-
     }
+    if (tlv_type == communication::TLV_TYPE::ERROR) this->error_ = true;
 }
 
 void message_queue::pop() {
@@ -36,4 +36,12 @@ message message_queue::front() {
 
 bool message_queue::empty() {
     return this->msgs_queue_.empty();
+}
+
+MESSAGE_TYPE message_queue::msg_type() const {
+    return this->msg_type_;
+}
+
+bool message_queue::verify_error() const {
+    return this->error_;
 }

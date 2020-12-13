@@ -1,7 +1,3 @@
-//
-// Created by leonardo on 01/12/20.
-//
-
 #ifndef REMOTE_BACKUP_M1_SERVER_RESOURCE_H
 #define REMOTE_BACKUP_M1_SERVER_RESOURCE_H
 
@@ -10,8 +6,6 @@
 #include <boost/logic/tribool.hpp>
 #include <utility>
 #include <iostream>
-
-//state: {processing, synced, failed} => synced tribool {indeterminate, true, false}
 
 
 namespace directory {
