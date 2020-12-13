@@ -13,7 +13,7 @@ resource::resource(boost::logic::tribool synced, std::string digest) : synced_{s
                                                                        digest_{std::move(
                                                                                digest)} {}
 
-resource resource::synced(boost::logic::tribool const &synced) {
+resource& resource::synced(boost::logic::tribool const &synced) {
     this->synced_ = synced;
     return *this;
 }
@@ -22,7 +22,7 @@ resource resource::synced(boost::logic::tribool const &synced) {
     return this->synced_;
 }
 
-resource resource::digest(std::string digest) {
+resource& resource::digest(std::string digest) {
     this->digest_ = std::move(digest);
     return *this;
 }

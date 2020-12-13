@@ -15,8 +15,6 @@ connection::connection(
           logger_ptr_ {std::move(logger_ptr)},
           req_handler_{std::move(req_handler)},
           request_buffer_{std::make_shared<std::vector<uint8_t>>(communication::message_queue::CHUNK_SIZE)} {
-        sum = 0;
-        count = 0;
 }
 
 ssl_socket &connection::socket() {

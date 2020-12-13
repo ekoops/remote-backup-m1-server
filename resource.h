@@ -21,11 +21,11 @@ namespace directory {
     public:
         resource(boost::logic::tribool synced, std::string digest);
 
-        resource synced(boost::logic::tribool const &synced);
+        resource& synced(boost::logic::tribool const &synced);
 
         [[nodiscard]] boost::logic::tribool synced() const;
 
-        resource digest(std::string digest);
+        resource& digest(std::string digest);
 
         [[nodiscard]] std::string digest() const;
     };

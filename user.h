@@ -9,12 +9,16 @@
 #include "dir.h"
 
 class user {
+    std::string id_;
     std::string username_;
     std::string ip_;
     bool is_auth_;
     bool is_synced_;
     std::shared_ptr<directory::dir> dir_ptr_;
 public:
+    [[nodiscard]] std::string const &id() const { return this->id_; }
+    void id(std::string const& id) { this->id_ = id; }
+
     [[nodiscard]] std::string const &ip() const { return this->ip_; }
     void ip(std::string const& ip) { this->ip_ = ip; }
 
@@ -47,7 +51,7 @@ public:
     }
 
     void dir(boost::filesystem::path const &absolute_path) {
-        this->dir_ptr_ = directory::dir::get_instance(absolute_path);
+        this->dir_ptr_ = directory::dir::get_instance(absolute_path, true);
     }
 };
 

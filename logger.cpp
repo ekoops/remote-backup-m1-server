@@ -2,7 +2,7 @@
 
 namespace fs = boost::filesystem;
 
-logger::logger(fs::path const &path) : ofs_{fs::ofstream{path}} {}
+logger::logger(fs::path const &path) : ofs_{fs::ofstream{path, std::ios_base::app}} {}
 
 void logger::log(
         user const& usr,

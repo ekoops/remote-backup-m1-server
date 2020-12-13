@@ -33,7 +33,7 @@ struct tools {
     );
 
 private:
-    static std::string hash_to_string(boost::uuids::detail::md5::digest_type const &digest);
+    static std::string MD5_to_string(boost::uuids::detail::md5::digest_type const &digest);
 };
 
 

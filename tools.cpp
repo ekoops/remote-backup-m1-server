@@ -48,7 +48,7 @@ std::string tools::hash(std::string const& s) {
     md5::digest_type digest;
     hash.process_bytes(s.data(), s.size());
     hash.get_digest(digest);
-    return hash_to_string(digest);
+    return MD5_to_string(digest);
 }
 
 
@@ -74,16 +74,23 @@ std::string tools::hash(fs::path const &absolute_path, fs::path const& relative_
     hash.process_bytes(&*file_buffer.cbegin(), length);
     hash.get_digest(digest);
 
-//    std::cout << "HASH1 " << hash_to_string(digest) << std::endl;
-    return hash_to_string(digest);
+//    std::cout << "HASH1 " << MD5_to_string(digest) << std::endl;
+    return MD5_to_string(digest);
 }
 
 
-std::string tools::hash_to_string(md5::digest_type const& digest) {
-    const auto intDigest = reinterpret_cast<const int*>(&digest);
+/**
+* Allow to obtain a string representation from an MD5 digest
+*
+* @param digest the digest that has to be converted
+* @return a string representation of an MD5 digest
+*/
+std::string tools::MD5_to_string(boost::uuids::detail::md5::digest_type const &digest) {
+    const auto int_digest = reinterpret_cast<const int *>(&digest);
     std::string result;
 
-    boost::algorithm::hex(intDigest, intDigest + (sizeof(md5::digest_type)/sizeof(int)), std::back_inserter(result));
+    boost::algorithm::hex(int_digest, int_digest + (sizeof(md5::digest_type) / sizeof(int)),
+                          std::back_inserter(result));
     return result;
 }
 

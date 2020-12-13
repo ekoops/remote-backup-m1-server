@@ -1,6 +1,3 @@
-//
-// Created by leonardo on 01/12/20.
-//
 #include "request_handler.h"
 #include "tools.h"
 #include "resource.h"
@@ -41,6 +38,7 @@ void request_handler::handle_auth(communication::tlv_view &msg_view,
     if (tools::verify_password(this->credentials_path_, username, password)) {
         std::string dir_name = tools::hash(username);
         std::cout << dir_name << std::endl;
+        user.id(dir_name);
         user.username(username);
         user.dir(this->backup_root_.generic_path() / dir_name);
         user.auth(true);
@@ -76,7 +74,7 @@ void request_handler::handle_sync(
         close_response(replies, communication::TLV_TYPE::OK);
     }
     catch (fs::filesystem_error &ex) {
-        std::cout << "Filesystem error from " << ex.what() << std::endl;
+        std::cout << "Filesystem error:\n\t" << ex.what() << std::endl;
         replies = std::make_shared<communication::message_queue>(
                 communication::MESSAGE_TYPE::SYNC
         );
@@ -109,10 +107,11 @@ void request_handler::handle_create(communication::tlv_view &msg_view,
         create_directories(absolute_path.parent_path());
         std::shared_ptr<fs::ofstream> ofs_ptr;
         bool is_first;
+
         {
             std::unique_lock ul{this->m_};
             auto result = this->ofs_stream_.emplace(
-                    c_sign,
+                    user.id() + c_sign,
                     std::make_shared<fs::ofstream>(absolute_path, std::ios_base::binary | std::ios_base::app)
             );
             ofs_ptr = result.first->second;
@@ -120,22 +119,20 @@ void request_handler::handle_create(communication::tlv_view &msg_view,
         }
         // writing file data
         std::copy(msg_view.cbegin(), msg_view.cend(), std::ostreambuf_iterator<char>(*ofs_ptr));
-
+        ofs_ptr->flush();
         bool is_last = msg_view.next_tlv() && msg_view.tlv_type() == communication::TLV_TYPE::END;
 
-        if (is_first) {
-            user_dir->insert_or_assign(c_relative_path, directory::resource{
-                    is_last,    // if is the last chunked, then the file is synced on server
-                    c_digest    // digest
-            });
-        }
+
+        user_dir->insert_or_assign(c_relative_path, directory::resource{
+                is_last, is_last ? c_digest : "TEMP"
+        });
+
         if (is_last) {
             ofs_ptr->close();
-            this->ofs_stream_.erase(c_sign);
-            // if is both first and last, then synced is already set to true and the following
-            // operation isn't needed.
-            if (!is_first) user_dir->insert_or_assign(c_relative_path, rsrc->synced(true));
-
+            {
+                std::unique_lock ul{this->m_};
+                this->ofs_stream_.erase(user.id() + c_sign);
+            }
             try {
                 // Comparing server file digest with the sent digest
                 std::string s_digest = tools::hash(absolute_path, c_relative_path);
@@ -161,8 +158,10 @@ void request_handler::handle_create(communication::tlv_view &msg_view,
 void request_handler::handle_update(communication::tlv_view &msg_view,
                                     std::shared_ptr<communication::message_queue> &replies,
                                     user &user) {
-    if (msg_view.tlv_type() != communication::TLV_TYPE::ITEM)
+    if (msg_view.tlv_type() != communication::TLV_TYPE::ITEM) {
+        std::cerr << "EXIT 1" << std::endl;
         return close_response(replies, communication::TLV_TYPE::ERROR);
+    }
     std::string c_sign{msg_view.cbegin(), msg_view.cend()};
     auto splitted_c_sign = tools::split_sign(c_sign);
     fs::path &c_relative_path = splitted_c_sign.first;
@@ -172,11 +171,22 @@ void request_handler::handle_update(communication::tlv_view &msg_view,
     replies->add_TLV(communication::TLV_TYPE::ITEM, c_sign.size(), c_sign.c_str());
 
     if (!msg_view.next_tlv() ||
-        msg_view.tlv_type() != communication::TLV_TYPE::CONTENT)
+        msg_view.tlv_type() != communication::TLV_TYPE::CONTENT) {
+        std::cerr << "EXIT 2" << std::endl;
         return close_response(replies, communication::TLV_TYPE::ERROR);
+    }
 
     auto rsrc = user_dir->rsrc(c_relative_path);
-    if (!rsrc || rsrc.value().digest() == c_digest) return close_response(replies, communication::TLV_TYPE::ERROR);
+    if (!rsrc || rsrc.value().digest() == c_digest) {
+        if (!rsrc) {
+            std::cerr << "CLIENT DIGEST " << c_digest << std::endl;
+        } else {
+            std::cerr << "SERVER DIGEST " << rsrc.value().digest() << " "
+                      << "CLIENT DIGEST " << c_digest << std::endl;
+        }
+        std::cerr << "EXIT 3" << std::endl;
+        return close_response(replies, communication::TLV_TYPE::ERROR);
+    }
 
     fs::path absolute_path{user_dir->path() / c_relative_path};
     fs::path temp_path{absolute_path};
@@ -185,40 +195,52 @@ void request_handler::handle_update(communication::tlv_view &msg_view,
     try {
         std::shared_ptr<fs::ofstream> ofs_ptr;
         bool is_first;
+
         {
             std::unique_lock ul{this->m_};
             auto result = this->ofs_stream_.emplace(
-                    c_sign,
+                    user.id() + c_sign,
                     std::make_shared<fs::ofstream>(temp_path, std::ios_base::binary | std::ios_base::app)
             );
             ofs_ptr = result.first->second;
             is_first = result.second;
         }
+        std::cerr << "COPIED: " << (msg_view.cend() - msg_view.cbegin()) << std::endl;
         std::copy(msg_view.cbegin(), msg_view.cend(), std::ostreambuf_iterator<char>(*ofs_ptr));
 
-        bool is_last = msg_view.next_tlv() && msg_view.tlv_type() == communication::TLV_TYPE::END;
+        bool is_last = msg_view.verify_end();
 
         if (is_first) {
-            user_dir->insert_or_assign(c_relative_path, directory::resource{
-                    is_last,
-                    c_digest
-            });
+            user_dir->insert_or_assign(c_relative_path, rsrc.value().synced(is_last));
         }
         if (is_last) {
             ofs_ptr->close();
-            this->ofs_stream_.erase(c_sign);
+
+            {
+                std::unique_lock ul{this->m_};
+                this->ofs_stream_.erase(user.id() + c_sign);
+            }
+
             if (!remove(absolute_path)) std::exit(-1);
             rename(temp_path, absolute_path);
-            if (!is_first) user_dir->insert_or_assign(c_relative_path, rsrc->synced(true));
+            user_dir->insert_or_assign(c_relative_path, rsrc.value().synced(true).digest(c_digest));
             std::string digest = tools::hash(absolute_path, c_relative_path);
             if (digest != c_digest) {
                 remove(absolute_path);
+                std::cerr << "EXIT 4"
+                          << "ABSOLUTE " << absolute_path << "\n"
+                          << "RELATIVE " << c_relative_path << "\n"
+                          << "DIGEST " << digest << "\n"
+                          << "rsrc.value().digest() " << rsrc.value().digest() << "\n"
+                          << "CLIENT DIGEST " << c_digest << std::endl;
+                std::exit(EXIT_FAILURE);
                 return close_response(replies, communication::TLV_TYPE::ERROR);
             }
         }
         return close_response(replies, communication::TLV_TYPE::OK);
     }
     catch (fs::filesystem_error &ex) {
+        std::cerr << "EXIT Exception: " << ex.what() << std::endl;
         return close_response(replies, communication::TLV_TYPE::ERROR);
     }
 }
