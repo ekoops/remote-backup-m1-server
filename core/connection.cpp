@@ -1,9 +1,8 @@
-#include "connection.h"
-#include <vector>
 #include <boost/bind/bind.hpp>
+#include <vector>
+#include "connection.h"
 
-#include "message.h"
-
+#define TIMEOUT 60
 
 connection::connection(
         boost::asio::io_context &io,
@@ -14,40 +13,94 @@ connection::connection(
           socket_{strand_, ctx},
           logger_ptr_{std::move(logger_ptr)},
           req_handler_ptr_{std::move(req_handler)},
-          buffer_(communication::message_queue::CHUNK_SIZE) {
+          buffer_(communication::message_queue::CHUNK_SIZE),
+          timeout_timer_{strand_, std::chrono::seconds(TIMEOUT)} {
 }
 
+/*
+ * Return the SSL socket
+ */
 ssl_socket &connection::socket() {
     return this->socket_;
 }
 
+/*
+ * Allow to schedule a timeout timer for handling not automatically
+ * detected disconnected client
+ */
+void connection::schedule_timeout() {
+    try {
+        this->timeout_timer_.expires_after(boost::asio::chrono::seconds{TIMEOUT});
+        this->timeout_timer_.async_wait(
+                [this](boost::system::error_code const &e) {
+                    if (!e) {
+                        this->timed_out = true;
+                        this->shutdown();
+                    } else if (e != boost::asio::error::operation_aborted) {
+                        return schedule_timeout();
+                    }
+                }
+        );
+    }
+    catch (boost::system::system_error &e) {
+        std::cerr << "Failed to set timeout timer" << std::endl;
+    }
+}
+
+/*
+ * Allows to gracefully shutdown the client connection
+ */
 void connection::shutdown() {
+    std::cout << "SHUTDOWN" << std::endl;
+    this->req_handler_ptr_->erase_stream(this->user_);
+    this->timeout_timer_.cancel();
     this->logger_ptr_->log(this->user_, "Shutdown");
     boost::system::error_code ignored_ec;
     this->socket_.shutdown(ignored_ec);
     this->socket_.lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 }
 
+/*
+ * An helper method to log the result on the read phase
+ */
 void connection::log_read() {
-    this->logger_ptr_->log(this->user_,
-                           communication::MESSAGE_TYPE::NONE,
-                           RESULT_TYPE::NONE,
-                           RESULT_TYPE::ERROR);
+    using namespace communication;
+    this->logger_ptr_->log(
+            this->user_,
+            MSG_TYPE::NONE,
+            RESULT_TYPE::RES_NONE,
+            RESULT_TYPE::RES_ERR
+    );
 }
 
+/*
+ * An helper method to log the result on the write phase
+ */
 void connection::log_write(boost::system::error_code const &e) {
-    auto message_result = !this->replies_.verify_error() ? RESULT_TYPE::OK : RESULT_TYPE::ERROR;
-    auto connection_result = !e ? RESULT_TYPE::OK : RESULT_TYPE::ERROR;
+    using namespace communication;
+    auto message_result = !this->replies_.verify_error() ? RESULT_TYPE::RES_OK : RESULT_TYPE::RES_ERR;
+    auto connection_result = !e ? RESULT_TYPE::RES_OK : RESULT_TYPE::RES_ERR;
     this->logger_ptr_->log(this->user_, this->replies_.msg_type(), message_result, connection_result);
 }
 
+/*
+ * Handle the last part of the communication logging the results,
+ * shutdowning the connection or starting to read another request
+ * depending on the presence of errors.
+ */
 void connection::handle_completion(boost::system::error_code const &e) {
+    if (this->timed_out) return;
     this->log_write(e);
     if (e) this->shutdown();
     else this->read_request(e);
 }
 
+/*
+ * Writes a single message in replies and then recall itself
+ * until the replies queue is empty
+ */
 void connection::write_response(boost::system::error_code const &e) {
+    if (this->timed_out) return;
     if (e) {
         this->log_write(e);
         return this->shutdown();
@@ -59,6 +112,7 @@ void connection::write_response(boost::system::error_code const &e) {
             this->socket_,
             boost::asio::buffer(&this->header_, sizeof(this->header_)),
             [self = shared_from_this()](boost::system::error_code const &e, size_t /**/) {
+                if (self->timed_out) return;
                 if (e) {
                     self->log_write(e);
                     return self->shutdown();
@@ -81,12 +135,17 @@ void connection::write_response(boost::system::error_code const &e) {
     );
 }
 
+/*
+ * Handle the provided client request producing necessary replies.
+ */
 void connection::handle_request(boost::system::error_code const &e) {
+    if (this->timed_out) return;
     if (e) {
         this->log_read();
         return this->shutdown();
     }
     try {
+        this->timeout_timer_.cancel();
         this->msg_ = communication::message{
                 std::make_shared<std::vector<uint8_t>>(
                         this->buffer_.begin(),
@@ -109,19 +168,27 @@ void connection::handle_request(boost::system::error_code const &e) {
     this->write_response(boost::system::error_code{});
 }
 
+/*
+ * Reads the request header and payload. It manages errors
+ * and possible connection timeouts.
+ */
 void connection::read_request(boost::system::error_code const &e) {
+    if (this->timed_out) return;
     if (e) {
         this->log_read();
         return this->shutdown();
     }
+    this->schedule_timeout();
     boost::asio::async_read(
             this->socket_,
             boost::asio::buffer(&this->header_, sizeof(this->header_)),
             [self = shared_from_this()](boost::system::error_code const &e, size_t /**/) {
+                if (self->timed_out) return;
                 if (e) {
                     self->log_read();
                     return self->shutdown();
                 }
+                self->schedule_timeout();
                 boost::asio::async_read(
                         self->socket_,
                         boost::asio::buffer(self->buffer_, self->header_),
@@ -135,10 +202,15 @@ void connection::read_request(boost::system::error_code const &e) {
     );
 }
 
+/*
+ * Starts the interaction with a client scheduling
+ * the timer and the handshake request
+ */
 void connection::start() {
     this->user_.ip(this->socket_.lowest_layer().remote_endpoint().address().to_string());
     this->logger_ptr_->log(this->user_, "Accepted connection");
     this->socket_.lowest_layer().set_option(boost::asio::socket_base::keep_alive(true));
+    this->schedule_timeout();
     this->socket_.async_handshake(boost::asio::ssl::stream_base::server,
                                   boost::bind(&connection::read_request,
                                               shared_from_this(),

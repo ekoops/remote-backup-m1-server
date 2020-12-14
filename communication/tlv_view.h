@@ -1,7 +1,3 @@
-//
-// Created by leonardo on 01/12/20.
-//
-
 #ifndef REMOTE_BACKUP_M1_SERVER_TLV_VIEW_H
 #define REMOTE_BACKUP_M1_SERVER_TLV_VIEW_H
 
@@ -10,14 +6,15 @@
 #include "message.h"
 
 namespace communication {
-/** This class provide an easy way to iterate over each
- * TLV segment of a message. It is necessary to call
- * next_tlv at least one time to obtain a valid TLV
- * segment view; otherwise, all the accessor method
- * will throw an exception. On each valid next_tlv()
- * it is possible to access to T, L and V through
- * the methods tlv_type(), length() and begin()/cbegin()/end()/cend()
- */
+    /*
+     * This class provide an easy way to iterate over each
+     * TLV segment of a message. It is necessary to call
+     * next_tlv at least one time to obtain a valid TLV
+     * segment view; otherwise, all the accessor method
+     * will throw an exception. On each valid next_tlv()
+     * it is possible to access to T, L and V through
+     * the methods tlv_type(), length() and begin()/cbegin()/end()/cend()
+     */
     class tlv_view {
         TLV_TYPE tlv_type_;
         size_t length_;
@@ -27,7 +24,7 @@ namespace communication {
         bool valid_;
         bool finished_;
     public:
-        tlv_view(message const &msg);
+        explicit tlv_view(message const &msg);
 
         bool next_tlv();
 
@@ -39,7 +36,7 @@ namespace communication {
 
         [[nodiscard]] size_t length() const;
 
-        bool verify_end() const;
+        [[nodiscard]] bool verify_end() const;
 
         std::vector<uint8_t>::iterator begin();
 
@@ -47,7 +44,7 @@ namespace communication {
 
         [[nodiscard]] std::vector<uint8_t>::const_iterator cbegin() const;
 
-        std::vector<uint8_t>::const_iterator cend() const;
+        [[nodiscard]] std::vector<uint8_t>::const_iterator cend() const;
     };
 }
 

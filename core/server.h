@@ -1,7 +1,3 @@
-//
-// Created by leonardo on 01/12/20.
-//
-
 #ifndef REMOTE_BACKUP_M1_SERVER_SERVER_H
 #define REMOTE_BACKUP_M1_SERVER_SERVER_H
 
@@ -14,8 +10,13 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/program_options.hpp>
 #include "connection.h"
-#include "logger.h"
+#include "../utilities/logger.h"
 
+/*
+ * This class provides an abstraction of the entire
+ * backup server. A thread pool is used to manage
+ * all incoming connection with an async approach.
+ */
 class server : private boost::noncopyable {
     std::size_t thread_pool_size_;
     boost::asio::io_context io_;

@@ -11,6 +11,6 @@ find_package(Boost 1.73.0 REQUIRED COMPONENTS filesystem thread serialization re
 find_package(OpenSSL REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIR})
-add_executable(remote-backup-m1-server main.cpp server.cpp server.h connection.cpp connection.h request_handler.cpp request_handler.h tools.cpp tools.h message.h message.cpp tlv_view.h tlv_view.cpp dir.h dir.cpp resource.h resource.cpp user.cpp user.h message_queue.cpp message_queue.h logger.cpp logger.h)
+add_executable(remote-backup-m1-server main.cpp core/server.cpp core/server.h core/connection.cpp core/connection.h core/request_handler.cpp core/request_handler.h utilities/tools.cpp utilities/tools.h communication/message.h communication/message.cpp communication/tlv_view.h communication/tlv_view.cpp directory/dir.h directory/dir.cpp directory/resource.h directory/resource.cpp core/user.cpp core/user.h communication/message_queue.cpp communication/message_queue.h utilities/logger.cpp utilities/logger.h communication/types.h core/open_streams.cpp core/open_streams.h)
 
 target_link_libraries(remote-backup-m1-server ${Boost_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto)

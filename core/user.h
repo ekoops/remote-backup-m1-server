@@ -1,13 +1,11 @@
-//
-// Created by leonardo on 01/12/20.
-//
-
 #ifndef REMOTE_BACKUP_M1_SERVER_USER_H
 #define REMOTE_BACKUP_M1_SERVER_USER_H
 
+#include "../directory/dir.h"
 
-#include "dir.h"
-
+/*
+ * This class is used to
+ */
 class user {
     std::string id_;
     std::string username_;
@@ -65,7 +63,18 @@ public:
         this->dir_ptr_ = directory::dir::get_instance(absolute_path);
         return *this;
     }
+    bool operator==(user const &other) const {
+        return this->id_ == other.id_;
+    }
 };
 
+namespace std {
+    template <>
+    struct hash<user> {
+        std::size_t operator()(user const& user) const {
+            return std::hash<std::string>()(user.id());
+        }
+    };
+}
 
 #endif //REMOTE_BACKUP_M1_SERVER_USER_H

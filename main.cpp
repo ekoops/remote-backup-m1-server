@@ -2,7 +2,7 @@
 #include <string>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
-#include "server.h"
+#include "core/server.h"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
         s.run();
     }
     catch (std::exception &ex) {
-        std::cerr << "exception:\n\t" << ex.what() << std::endl;
+        std::cerr << "Exception:\n\t" << ex.what() << std::endl;
         return EXIT_FAILURE;
     }
 

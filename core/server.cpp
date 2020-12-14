@@ -5,6 +5,14 @@
 
 namespace fs = boost::filesystem;
 
+/**
+ * Construct a new server instance, setting up the necessary
+ * handler for signals handling, the acceptor for incoming
+ * connections and SSL context parameters.
+ *
+ * @param vm a variable map containing all program options to set up server instance
+ * @return a new constructed server instance
+ */
 server::server(boost::program_options::variables_map const &vm)
         : thread_pool_size_{vm["threads"].as<std::size_t>()},
           signals_{io_},
@@ -47,7 +55,15 @@ server::server(boost::program_options::variables_map const &vm)
     start_accept();
 }
 
-
+/**
+ * Creates a thread pool composed of thread_pool_size threads.
+ * The threads will call the run method on the io_context on
+ * which the server is defined to process the enqueued completion
+ * handlers (connection tasks). This is a blocking due to the fact
+ * that the created threads are joined.
+ *
+ * @return void
+ */
 void server::run() {
     // Create a pool of threads to run all of the io_contexts.
     std::vector<std::thread> threads;
@@ -60,6 +76,12 @@ void server::run() {
     for (auto &t: threads) t.join();
 }
 
+/**
+ * This method allows to start accept on a new created
+ * SSL socket
+ *
+ * @return void
+ */
 void server::start_accept() {
     this->new_connection_ptr_.reset(new connection(
             this->io_,
@@ -76,6 +98,13 @@ void server::start_accept() {
 
 }
 
+/**
+ * This method is called after a client connection. It
+ * starts the request-response cycle for a client and
+ * allows the server to restart the acceptance phase
+ *
+ * @return void
+ */
 void server::handle_accept(const boost::system::error_code &e) {
     if (!e) this->new_connection_ptr_->start();
     start_accept();

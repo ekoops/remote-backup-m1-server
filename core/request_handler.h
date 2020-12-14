@@ -1,7 +1,3 @@
-//
-// Created by leonardo on 01/12/20.
-//
-
 #ifndef REMOTE_BACKUP_M1_SERVER_REQUEST_HANDLER_H
 #define REMOTE_BACKUP_M1_SERVER_REQUEST_HANDLER_H
 
@@ -9,32 +5,26 @@
 #include <string>
 #include <boost/noncopyable.hpp>
 #include <boost/filesystem.hpp>
-#include "message.h"
-#include "dir.h"
-#include "tlv_view.h"
+#include "../communication/message.h"
+#include "../directory/dir.h"
+#include "../communication/tlv_view.h"
 #include "user.h"
 #include <condition_variable>
 #include <unordered_set>
-#include "message_queue.h"
-#include "logger.h"
+#include "../communication/message_queue.h"
+#include "../utilities/logger.h"
+#include "open_streams.h"
 
-typedef std::pair<
-        std::unordered_map<std::string,
-                std::shared_ptr<boost::filesystem::ofstream>>::iterator,
-        bool
-> get_stream_result;
 
+/*
+ * This class allows to manage incoming client request
+ * maintaining the ofstream opened during a communication
+ * session to improve the efficiency.
+ */
 class request_handler : private boost::noncopyable {
     boost::filesystem::path backup_root_;
     boost::filesystem::path credentials_path_;
-    std::unordered_map<std::string, std::shared_ptr<boost::filesystem::ofstream>> opened_files_;
-    std::mutex m_;
-
-    static bool verify_password(
-            boost::filesystem::path const &credentials_path,
-            std::string const &username,
-            std::string const &password
-    );
+    open_streams streams_;
 
     void handle_auth(communication::tlv_view &msg_view,
                      communication::message_queue &replies,
@@ -65,10 +55,6 @@ public:
     void handle_request(const communication::message &request,
                         communication::message_queue &replies,
                         user &usr);
-
-
-    get_stream_result get_stream(std::string const &key,boost::filesystem::path const &path);
-    void erase_stream(std::string const &key);
 };
 
 #endif //REMOTE_BACKUP_M1_SERVER_REQUEST_HANDLER_H
