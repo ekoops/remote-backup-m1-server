@@ -1,6 +1,8 @@
 #ifndef REMOTE_BACKUP_M1_SERVER_TYPES_H
 #define REMOTE_BACKUP_M1_SERVER_TYPES_H
 
+#include <unordered_map>
+
 namespace communication {
     /*
      * These enums define the allowed message type, the allowed
@@ -55,22 +57,6 @@ namespace communication {
         RES_OK,
         RES_ERR,
         RES_NONE
-    };
-
-    std::unordered_map<MSG_TYPE, std::string> msg_type_str_map{
-            {NONE,       "-"},
-            {CREATE,     "CREATE"},
-            {UPDATE,     "UPDATE"},
-            {ERASE,      "ERASE"},
-            {SYNC,       "SYNC"},
-            {AUTH,       "AUTH"},
-            {KEEP_ALIVE, "KEEP_ALIVE"}
-    };
-
-    std::unordered_map<RESULT_TYPE, std::string> res_type_str_map{
-            {RES_OK, "OK"},
-            {RES_ERR, "ERR"},
-            {RES_NONE, "-"}
     };
 }
 

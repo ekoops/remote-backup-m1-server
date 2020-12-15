@@ -17,7 +17,8 @@
  */
 class logger : private boost::noncopyable {
     boost::filesystem::ofstream ofs_;
-
+    std::unordered_map<communication::MSG_TYPE, std::string> msg_type_str_map_;
+    std::unordered_map<communication::RESULT_TYPE, std::string> res_type_str_map_;
     static std::string get_time();
 
 public:

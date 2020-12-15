@@ -51,8 +51,7 @@ void connection::schedule_timeout() {
  * Allows to gracefully shutdown the client connection
  */
 void connection::shutdown() {
-    std::cout << "SHUTDOWN" << std::endl;
-    this->req_handler_ptr_->erase_stream(this->user_);
+    this->req_handler_ptr_->streams().erase_stream(this->user_);
     this->timeout_timer_.cancel();
     this->logger_ptr_->log(this->user_, "Shutdown");
     boost::system::error_code ignored_ec;

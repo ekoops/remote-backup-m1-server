@@ -9,7 +9,23 @@ using namespace communication;
  * @param path the path on which the created logger has to log
  * @return void
  */
-logger::logger(fs::path const &path) : ofs_{fs::ofstream{path, std::ios_base::app}} {}
+logger::logger(fs::path const &path) : ofs_{fs::ofstream{path, std::ios_base::app}} {
+    this->msg_type_str_map_ = {
+            {NONE,       "-"},
+            {CREATE,     "CREATE"},
+            {UPDATE,     "UPDATE"},
+            {ERASE,      "ERASE"},
+            {SYNC,       "SYNC"},
+            {AUTH,       "AUTH"},
+            {KEEP_ALIVE, "KEEP_ALIVE"}
+    };
+
+    this->res_type_str_map_ = {
+            {RES_OK, "OK"},
+            {RES_ERR, "ERR"},
+            {RES_NONE, "-"}
+    };
+}
 
 /**
  * Log the given message related to the given user
@@ -48,9 +64,9 @@ void logger::log(
     std::string today = logger::get_time();
     std::string const &username = usr.username();
     std::string const &ip = usr.ip();
-    auto msg_type_str = msg_type_str_map.find(msg_type)->second;
-    auto msg_res_str = res_type_str_map.find(message_result)->second;
-    auto con_res_str = res_type_str_map.find(connection_result)->second;
+    auto msg_type_str = this->msg_type_str_map_.find(msg_type)->second;
+    auto msg_res_str = this->res_type_str_map_.find(message_result)->second;
+    auto con_res_str = this->res_type_str_map_.find(connection_result)->second;
     std::ostringstream log;
     log << '[' << today << "]["
         << username << (username.empty() ? "" : "@") << ip << "]["

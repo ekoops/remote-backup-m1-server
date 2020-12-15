@@ -52,9 +52,13 @@ public:
             boost::filesystem::path credentials_path
     );
 
-    void handle_request(const communication::message &request,
-                        communication::message_queue &replies,
-                        user &usr);
+    void handle_request(
+            const communication::message &request,
+            communication::message_queue &replies,
+            user &usr
+    );
+
+    open_streams &streams();
 };
 
 #endif //REMOTE_BACKUP_M1_SERVER_REQUEST_HANDLER_H

@@ -423,3 +423,7 @@ void request_handler::handle_request(
         }
     }
 }
+
+open_streams &request_handler::streams() {
+    return this->streams_;
+}

@@ -1,7 +1,6 @@
 #ifndef REMOTE_BACKUP_M1_SERVER_TOOLS_H
 #define REMOTE_BACKUP_M1_SERVER_TOOLS_H
 
-
 #include <string>
 #include <boost/filesystem.hpp>
 #include <boost/uuid/detail/md5.hpp>
